@@ -3,6 +3,10 @@ function encode(cl,code,...)
 	if (p[#p] or ""):match("%s") then
 		p[#p]=":"..p[#p]:gsub("^:?","")
 	end
+	if type(code)=="number" then
+		code=tostring(code)
+		code=("0"):rep(math.max(0,3-#code))..code
+	end
 	return ":potato.lua "..code.." "..(cl.nick or "*").." "..table.concat(p," ")
 end
 
@@ -102,12 +106,12 @@ hook.new("connect",function(cl)
 	cl:send(encode(cl,266,1337,1337,"Current global users 1337, max 1337"))
 	cl:send(encode(cl,250,"Highest connection count: 1337 (1337 clients) (1337 connections received)"))
 	cl:send(encode(cl,375,"- potato Message of the Day -"))
-	cl:send(encode(cl,372,"  ______  o          _____ "))
-	cl:send(encode(cl,372," |      |   |\\	   | |      "))
-	cl:send(encode(cl,372," |      | | | \\   | |      "))
-	cl:send(encode(cl,372," |______| | |  \\  | |  ___ "))
-	cl:send(encode(cl,372," |        | |   \\ | |     |"))
-	cl:send(encode(cl,372," |        | |    \\| |_____|"))
+	cl:send(encode(cl,372,"  ______    o            _____ "))
+	cl:send(encode(cl,372," |      |  _    |\\    | |      "))
+	cl:send(encode(cl,372," |      |   |   | \\   | |      "))
+	cl:send(encode(cl,372," |______|   |   |  \\  | |  ___ "))
+	cl:send(encode(cl,372," |          |   |   \\ | |     |"))
+	cl:send(encode(cl,372," |        __|__ |    \\| |_____|"))
 	cl:send(encode(cl,376,"End of /MOTD command."))
 	cl:send(":"..cl.nick.." MODE "..cl.nick.." :+i")
 	chan_join(cl,"#oc")

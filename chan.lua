@@ -61,8 +61,12 @@ hook.new("command_join",function(cl,chan)
 	if not chan then
 		return 461,"JOIN","Not enough parameters"
 	end
-	if not contains(cl.chans,chan) and chan:match("^#[%w%d]*$") then
-		chan_join(cl,chan)
+	if chan:match("^#[%w%d]*$") then
+		if not contains(cl.chans,chan) then
+			chan_join(cl,chan)
+		end
+	else
+		return 403,chan,"No such channel"
 	end
 end)
 
