@@ -21,6 +21,7 @@ dofile("serialize.lua")
 local sv=assert(socket.bind("*",6667))
 hook.newsocket(sv)
 clients={}
+commands={}
 nicks=setmetatable({},{__index=function(s,n)
 	for k,v in pairs(nicks) do
 		if k:lower()==n:lower() then

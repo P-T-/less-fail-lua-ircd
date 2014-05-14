@@ -28,7 +28,11 @@ hook.new("raw",function(cl,txt)
 				cl:send(encode(cl,...))
 			end
 		end
+		if commands[cmd] then
+			commands[cmd](cl,unpack(pr))
+		end
 		hook.queue("command_"..cmd,cl,unpack(pr))
+		hook.queue("command",cmd,cl,unpack(pr))
 	end
 end)
 
