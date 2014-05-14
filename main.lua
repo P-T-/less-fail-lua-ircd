@@ -21,7 +21,13 @@ dofile("serialize.lua")
 local sv=assert(socket.bind("*",6667))
 hook.newsocket(sv)
 clients={}
-nicks={}
+nicks=setmetatable({},{__index=function(s,n)
+	for k,v in pairs(nicks) do
+		if k:lower()==n:lower() then
+			return v
+		end
+	end
+end})
 local function send(cl,txt)
 	print("SENDING "..cl.ip.." \""..txt.."\"")
 	return cl.sk:send(txt.."\r\n")
