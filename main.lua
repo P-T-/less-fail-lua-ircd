@@ -12,7 +12,7 @@ function tpairs(tbl)
 		return s[c],tbl[s[c]]
 	end
 end
-dofile("C:\\A\\ocbot\\hook.lua")
+dofile("hook.lua")
 dofile("init.lua")
 dofile("chan.lua")
 dofile("ping.lua")
