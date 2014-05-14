@@ -5,7 +5,7 @@ function sendchan(chan,txt,cl)
 	end
 	local u={}
 	for k,v in pairs(chan) do
-		for k,v in pairs(chans[v]) do
+		for k,v in pairs(chans[v] or {}) do
 			if tonumber(k) and (not cl or v~=cl) and not u[v] then
 				v:send(txt)
 				u[v]=true
