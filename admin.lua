@@ -11,19 +11,19 @@ function admin_op(chan,cl)
 end
 function admin_deop(chan,cl)
 	if contains(chans[chan].op,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." -o :"..cl.nick)
+		sendchan(chan,":potato.lua MODE "..chan.." -o "..cl.nick)
 		table.vremove(chans[chan].op,cl)
 	end
 end
 function admin_voice(chan,cl)
 	if not contains(chans[chan].voice,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." +v :"..cl.nick)
+		sendchan(chan,":potato.lua MODE "..chan.." +v "..cl.nick)
 		table.insert(chans[chan].voice,cl)
 	end
 end
 function admin_devoice(chan,cl)
 	if contains(chans[chan].voice,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." -v :"..cl.nick)
+		sendchan(chan,":potato.lua MODE "..chan.." -v "..cl.nick)
 		table.vremove(chans[chan].voice,cl)
 	end
 end
@@ -35,7 +35,7 @@ hook.new("command_mode",function(cl,chan,mode,user)
 		if nicks[user] and mode:match("^[%+%-][voq]$") then
 			if contains((chans[chan] or {}).op or {},cl) then
 				sendchan(chan,":"..cl.id.." MODE "..chan.." "..mode.." "..user)
-				local t=chans[chan][smode[mode:match("^%-(.)")]]
+				local t=chans[chan][smode[mode:match("^.(.)")]]
 				if mode:match("^%-") and contains(t,nicks[user]) then
 					table.vremove(t,nicks[user])
 				elseif mode:match("^%+") and not not contains(t,nicks[user]) then
@@ -59,7 +59,7 @@ local function maxval(tbl)
 	return mx
 end
 hook.new("msg",function(cl,chan,txt)
-	if cl.ip=="127.0.0.1" and txt:match("^@") then
+	if cl.sk:getpeername()=="127.0.0.1" and txt:match("^@") then
 		txt=txt:match("^@(.+)")
 		local func,err=loadstring("return "..txt,"=lua")
 		if not func then

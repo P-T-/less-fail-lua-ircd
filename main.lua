@@ -19,6 +19,7 @@ dofile("ping.lua")
 dofile("admin.lua")
 dofile("who.lua")
 dofile("serialize.lua")
+dofile("async.lua")
 local sv=assert(socket.bind("*",6667))
 hook.newsocket(sv)
 clients={}
@@ -31,8 +32,9 @@ nicks=setmetatable({},{__index=function(s,n)
 	end
 end})
 local function send(cl,txt)
-	print("SENDING "..cl.ip.." \""..txt.."\"")
-	return cl.sk:send(txt.."\r\n")
+	async.new(function()
+		async.socket(cl.sk).send(txt.."\r\n")
+	end)
 end
 local function close(cl,reason)
 	if cl.nick then
@@ -76,6 +78,7 @@ while true do
 			send=send,
 			close=close,
 			chans={},
+			buffer={},
 		}
 		hook.queue("new_client",clients[cl])
 		cl=sv:accept()
@@ -84,7 +87,7 @@ while true do
 		if v then
 			local res,err=k:receive(0)
 			if err and err~="timeout" then
-				close(v,"Socket error")
+				close(v,"Error: "..err)
 			else
 				local txt=k:receive()
 				if txt then
