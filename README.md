@@ -7,3 +7,6 @@ TODO:
 +	ChanServ
 +	NickServ
 +	rDNS/Cloaks
++	whowas
++	proper join command
++	supporting half the crap i claim to support
