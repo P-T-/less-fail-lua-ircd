@@ -18,3 +18,6 @@ hook.new("command_whois",function(cl,user)
 	end
 	return 318,user,"End of /WHOIS list."
 end)
+hook.new("command_who",function(cl,txt)
+	
+end)
