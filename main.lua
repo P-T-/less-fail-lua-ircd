@@ -1,4 +1,4 @@
-local socket=require("socket")
+socket=require("socket")
 function tpairs(tbl)
 	local s={}
 	local c=1
@@ -42,7 +42,7 @@ local function close(cl,reason)
 		for k,v in pairs(cl,chans) do
 			chans[v]=chans[v] or {}
 			table.vremove(chans[v],cl)
-			if #chans[v] then
+			if #chans[v]==0 then
 				chans[v]=nil
 			end
 		end
