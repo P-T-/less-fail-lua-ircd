@@ -1,55 +1,63 @@
 async={}
 local resume
-function async.new(func)
+function async.new(func,err)
 	local co=coroutine.create(func)
 	local sfunc
 	function sfunc(...)
 		resume=sfunc
 		hook.del(sfunc)
 		local p={coroutine.resume(co,...)}
-		assert(p[1],(p[2] or "").."\n"..debug.traceback(co))
+		if coroutine.status(co)~="dead" and err and not p[1] then
+			err((p[2] or "").."\n"..debug.traceback(co))
+		end
 		return unpack(p,2)
 	end
 	resume=sfunc
 	assert(coroutine.resume(co))
 	return sfunc
 end
-function async.pull(name)
-	hook.new(name,resume)
+function async.pull(...)
+	hook.new({...},resume)
 	return coroutine.yield()
 end
 function async.wait(n)
-	hook.new("timer_"..hook.timer(n),resume)
+	hook.new(hook.timer(n),resume)
 	coroutine.yield()
 end
 function async.socket(sk,err)
 	assert(sk,err)
-	return setmetatable({
-		receive=function(len,timeout)
-			if len and len<1 then
+	local out
+	out=setmetatable({
+		receive=function(len,pfx)
+			local tmo=out.timeout
+			if type(len)=="number" and len<1 then
 				return "",nil
+			elseif type(tmo)=="number" and tmo<=0 then
+				return nil,"timeout"
 			end
 			hook.newsocket(sk)
 			local resume=resume
-			local nd
-			if timeout then
-				hook.new("timer_"..hook.timer(timeout),function()
-					nd=true
+			local stop=false
+			if tmo then
+				hook.new(hook.timer(tmo),function()
+					stop=true
+					resume(nil,"timeout")
 				end)
 			end
 			hook.new("select",function()
-				if nd then
-					resume(nil,timeout)
-				end
-				local txt,err=sk:receive(len)
+				local txt,err,str=sk:receive(len)
+				txt=txt or str
 				if err~="timeout" then
 					resume(txt,err)
+					stop=true
+					hook.stop()
+				elseif stop then
 					hook.stop()
 				end
 			end)
 			local txt,err=coroutine.yield()
 			hook.remsocket(sk)
-			return txt,err
+			return (pfx or "")..txt,err
 		end,
 		send=function(txt)
 			local ind=1
@@ -84,12 +92,13 @@ function async.socket(sk,err)
 			end
 		end,
 		close=function()
-			hook.remsocket(sk)
+			while hook.remsocket(sk) do end
 			sk:close()
 		end,
 		sk=sk,
 	},{__gc=function()
-		hook.remsocket(sk)
+		while hook.remsocket(sk) do end
 		sk:close()
 	end})
+	return out
 end
