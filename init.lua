@@ -10,11 +10,11 @@ function encode(cl,code,...)
 	return ":potato.lua "..code.." "..(cl.nick or "*").." "..table.concat(p," ")
 end
 
-hook.new("raw",function(cl,txt)
+hook.new("raw",function(user,txt)
 	local cmd,params=txt:match("^(%S*)%s?(.*)")
 	print("got command "..cmd)
 	cmd=cmd:lower()
-	if cl.connected or cmd=="nick" or cmd=="user" then
+	if user.connected or cmd=="nick" or cmd=="user" then
 		local long=params:match("%s:(.*)")
 		if long then
 			params=params:gsub("%s:.*","")
@@ -29,27 +29,31 @@ hook.new("raw",function(cl,txt)
 		print("params: "..params.." :"..(long or ""))
 		hook.callback=function(...)
 			if ... then
-				cl:send(encode(cl,...))
+				user:send(encode(cl,...))
 			end
 		end
 		if commands[cmd] then
 			commands[cmd](cl,unpack(pr))
 		end
-		hook.queue("command_"..cmd,cl,unpack(pr))
-		hook.queue("command",cmd,cl,unpack(pr))
+		hook.queue("command_"..cmd,user,unpack(pr))
+		hook.queue("command",cmd,user,unpack(pr))
+	elseif cmd=="quit" then
+		user:close()
 	end
 end)
 
-hook.new("command_user",function(cl,username,_,_,realname)
-	if not cl.connected then
+hook.new("command_user",function(user,username,_,_,realname)
+	if not user.connected then
 		if not username and not realname then
 			return 461,"USER","Not enough parameters"
 		end
-		cl.username=username:gsub("[^%a%d]",""):sub(1,8)
-		cl.realname=realname
+		user.username=username:gsub("[^%a%d]",""):sub(1,8)
+		user.realname=realname
 		if cl.nick then
 			hook.queue("connect",cl)
 		end
+	else
+		return 462,"You may not reregister"
 	end
 end)
 
@@ -57,31 +61,22 @@ function validnick(nick)
 	return nick:match("^[%a%^_\\|%[%]][%a%d%^_\\|%[%]]*$") and #nick<17
 end
 
-hook.new("command_nick",function(cl,nick)
-	print((cl.nick or "*").." NIIIIIIiiCK "..nick.."\"")
+hook.new("command_nick",function(user,nick)
 	if not nick then
-		print("461")
 		return 461,"NICK","Not enough parameters"
 	elseif nicks[nick] then
-		print("433")
 		return 433,nick,"Nickname is already in use"
 	elseif not validnick(nick) then
-		print("432")
 		return 432,nick,"Erroneous Nickname"
 	end
 	if cl.nick then
 		nicks[cl.nick]=nil
-		print("niiiiiiiiil")
 	end
-	nicks[nick]=cl
-	print("wat "..tostring(nicks[nick]))
+	nicks[nick]=user
 	cl.nick=nick
-	print("watwat "..tostring(cl.nick))
 	if not cl.connected and cl.username then
-		print("queueeeee")
 		hook.queue("connect",cl)
 	elseif cl.username then
-		print("uuuuuuuser")
 		sendchan(cl.chans,":"..cl.id.." NICK "..nick)
 		cl.id=cl.nick.."!"..cl.username.."@"..cl.ip
 	end
@@ -95,7 +90,7 @@ hook.new("connect",function(cl)
 	cl:send(encode(cl,003,"This server was created Jan 1 0000 at 00:00:00 UTC"))
 	cl:send(encode(cl,004,"potato.lua","FailLuaIRCd0.0-0","DQRSZagiloswz","CFILPQbcefgijklmnopqrstvz","bkloveqjfI"))
 	cl:send(encode(cl,005,"CHANTYPES=#","EXCEPTS","INVEX","CHANMODES=eIbq,k,flj,CFPcgimnpstz","CHANLIMIT=#:50","PREFIX=(ov)@+","MAXLIST=bqeI:100","MODES=4","NETWORK=PotatoNet","KNOCK","STATUSMSG=@+","CALLERID=g","are supported by this server"))
-	cl:send(encode(cl,005,"CASEMAPPING=rfc1459","CHARSET=ascii","NICKLEN=30","CHANNELLEN=50","TOPICLEN=390","ETRACE","CPRIVMSG","CNOTICE","DEAF=D","MONITOR=100","FNC","TARGMAX=NAMES:1,LIST:1,KICK:1,WHOIS:1,PRIVMSG:4,NOTICE:4,ACCEPT:,MONITOR:","are supported by this server"))
+	cl:send(encode(cl,005,"CASEMAPPING=rfc1459","CHARSET=ascii","NICKLEN=16","CHANNELLEN=50","TOPICLEN=390","ETRACE","CPRIVMSG","CNOTICE","DEAF=D","MONITOR=100","FNC","TARGMAX=NAMES:1,LIST:1,KICK:1,WHOIS:1,PRIVMSG:4,NOTICE:4,ACCEPT:,MONITOR:","are supported by this server"))
 	cl:send(encode(cl,005,"EXTBAN=$,acjorsxz","WHOX","CLIENTVER=3.0","SAFELIST ELIST=CTU","are supported by this server"))
 	cl:send(encode(cl,251,"There are 1337 users and 1337 invisible on 1337 servers"))
 	cl:send(encode(cl,252,1337,"IRC Operators online"))

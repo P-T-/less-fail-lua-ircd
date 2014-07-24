@@ -1,4 +1,4 @@
-function serialize(value, pretty, level)
+function serialize(value, pretty)
 	local kw = {
 		["and"]=true,["break"]=true, ["do"]=true, ["else"]=true,
 		["elseif"]=true, ["end"]=true, ["false"]=true, ["for"]=true,
@@ -27,20 +27,18 @@ function serialize(value, pretty, level)
 			end
 		elseif t == "string" then
 			return string.format("%q", v):gsub("\\\n","\\n")
+		elseif t == "table" and pretty and getmetatable(v) and getmetatable(v).__tostring then
+			return tostring(v)
 		elseif t == "table" then
 			if ts[v] then
-				if pretty then
-					return "recursion"
-				else
-					error("tables with cycles are not supported")
-				end
+				return "recursive"
 			end
 			ts[v] = true
 			local i, r = 1, nil
 			local f
 			for k, v in pairs(v) do
 				if r then
-					r = r .. ","
+					r = r .. "," .. (pretty and ("\n" .. string.rep(" ", l)) or "")
 				else
 					r = "{"
 				end
@@ -59,11 +57,29 @@ function serialize(value, pretty, level)
 			end
 			ts[v] = nil -- allow writing same table more than once
 			return (r or "{") .. "}"
-		elseif pretty then
-			return tostring(v)
+		elseif t == "function" then
+			return "func"
+		elseif t == "userdata" then
+			return "userdata"
 		else
-			error("unsupported type: " .. t)
+			if pretty then
+				return tostring(t)
+			else
+				error("unsupported type: " .. t)
+			end
 		end
 	end
-	return s(value, 1)
+	local result = s(value, 1)
+	local limit = type(pretty) == "number" and pretty or 10
+	if pretty then
+		local truncate = 0
+		while limit > 0 and truncate do
+			truncate = string.find(result, "\n", truncate + 1, true)
+			limit = limit - 1
+		end
+		if truncate then
+			return result:sub(1, truncate) .. "..."
+		end
+	end
+	return result
 end

@@ -1,54 +1,67 @@
 local smode={
-	["v"]="voice",
-	["o"]="op",
-	["q"]="quiet",
+	v="voice",
+	o="op",
+	q="quiet",
+	b="ban",
 }
-function admin_op(chan,cl)
-	if not contains(chans[chan].op,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." +o "..cl.nick)
-		table.insert(chans[chan].op,cl)
-	end
-end
-function admin_deop(chan,cl)
-	if contains(chans[chan].op,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." -o "..cl.nick)
-		table.vremove(chans[chan].op,cl)
-	end
-end
-function admin_voice(chan,cl)
-	if not contains(chans[chan].voice,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." +v "..cl.nick)
-		table.insert(chans[chan].voice,cl)
-	end
-end
-function admin_devoice(chan,cl)
-	if contains(chans[chan].voice,cl) then
-		sendchan(chan,":potato.lua MODE "..chan.." -v "..cl.nick)
-		table.vremove(chans[chan].voice,cl)
-	end
-end
-hook.new("command_mode",function(cl,chan,mode,user)
-	if not chan then
-		return 461,"MODE","Not enough parameters"
-	end
-	if mode and user then
-		if nicks[user] and mode:match("^[%+%-][voq]$") then
-			if contains((chans[chan] or {}).op or {},cl) then
-				sendchan(chan,":"..cl.id.." MODE "..chan.." "..mode.." "..user)
-				local t=chans[chan][smode[mode:match("^.(.)")]]
-				if mode:match("^%-") and contains(t,nicks[user]) then
-					table.vremove(t,nicks[user])
-				elseif mode:match("^%+") and not not contains(t,nicks[user]) then
-					table.insert(t,nicks[user])
-				end
-			end
-		end
-	elseif mode then
-		-- todo: channel modes
+local cmode={
+	
+}
+function setmode(chan,mode,cl)
+	chan=chans[chan]
+	local cm=mode:sub(1,1)=="+"
+	mode=mode:sub(2)
+	if cl then
+		chan[smode[mode]][cl]=cm or nil
 	else
-		return 324,chan,"+nt"
+		chan.modes[mode]=cm or nil
+	end
+end
+hook.new("command_mode",function(cl,schan,modes,...)
+	local chan=chans[schan]
+	if not modes then
+		return 461,"MODE","Not enough parameters"
+	elseif not chan then
+		return 403,schan,"No such channel"
+	elseif not chan.op[cl.nick] then
+		return 482,schan,"You're not a channel operator"
+	end
+	local users={...}
+	local cm=true
+	local md={}
+	for l1=1,#modes do
+		local c=modes:sub(l1,l1)
+		if c=="+" or cm=="-" then
+			cm=cm=="+"
+		else
+			md[#md+1]={c,cm}
+		end
+	end
+	local om="+"
+	local ou={}
+	local cm=true
+	for k,v in pairs(md) do
+		if (smode[v[1]] or cmode[v[1]]) and cm~=v[2] then
+			om=om..(cm and "-" or "+")
+			cm=v[2]
+		end
+		if smode[v[1]] then
+			local u=users[1]
+			if u and nicks[u] then
+				if not chan.users[u] then
+					return 401,u,"No such nick/channel"
+				end
+				om=om..v[1]
+				table.insert(ou,nicks[u])
+				table.remove(users,1)
+				setmode(chan,(cm and "+" or "-")..v[1],u)
+			end
+		elseif cmode[v[1]] then
+			setmode(chan,(cm and "+" or "-")..v[1])
+		end
 	end
 end)
+
 local function maxval(tbl)
 	local mx=0
 	for k,v in pairs(tbl) do
@@ -58,6 +71,7 @@ local function maxval(tbl)
 	end
 	return mx
 end
+
 hook.new("msg",function(cl,chan,txt)
 	if cl.sk:getpeername()=="127.0.0.1" and txt:match("^@") then
 		txt=txt:match("^@(.+)")
@@ -75,6 +89,7 @@ hook.new("msg",function(cl,chan,txt)
 		end
 	end
 end)
+
 hook.new("command_cloak",function(cl,user,host)
 	user=nicks[user]
 	if user then
@@ -86,3 +101,4 @@ hook.new("command_cloak",function(cl,user,host)
 		end
 	end
 end)
+

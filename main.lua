@@ -1,17 +1,4 @@
 socket=require("socket")
-function tpairs(tbl)
-	local s={}
-	local c=1
-	for k,v in pairs(tbl) do
-		s[c]=k
-		c=c+1
-	end
-	c=0
-	return function()
-		c=c+1
-		return s[c],tbl[s[c]]
-	end
-end
 dofile("hook.lua")
 dofile("init.lua")
 dofile("chan.lua")
@@ -23,7 +10,6 @@ dofile("async.lua")
 local sv=assert(socket.bind("*",6667))
 hook.newsocket(sv)
 clients={}
-commands={}
 nicks=setmetatable({},{__index=function(s,n)
 	for k,v in pairs(nicks) do
 		if k:lower()==n:lower() then
@@ -73,7 +59,7 @@ while true do
 	while cl do
 		hook.newsocket(cl)
 		clients[cl]={
-			sk=cl,
+			cl=cl,
 			ip=cl:getpeername(),
 			send=send,
 			close=close,
@@ -91,7 +77,7 @@ while true do
 			else
 				local txt=k:receive()
 				if txt then
-					hook.queue("raw",v,txt:sub(1,256))
+					hook.queue("raw",v,txt:sub(1,512))
 				end
 			end
 		end
