@@ -24,14 +24,8 @@ local function send(cl,txt)
 end
 local function close(cl,reason)
 	if cl.nick then
-		sendchan(cl.chans,":"..cl.id.." QUIT :"..(reason or "Quit"),true)
-		for k,v in pairs(cl,chans) do
-			chans[v]=chans[v] or {}
-			table.vremove(chans[v],cl)
-			if #chans[v]==0 then
-				chans[v]=nil
-			end
-		end
+		sendchan(cl.chans,":"..cl.id.." QUIT :"..(reason or "Quit"))
+		chan_part(cl,cl.chans,false)
 		nicks[cl.nick]=nil
 	end
 	cl.sk:close()
@@ -59,7 +53,7 @@ while true do
 	while cl do
 		hook.newsocket(cl)
 		clients[cl]={
-			cl=cl,
+			sk=cl,
 			ip=cl:getpeername(),
 			send=send,
 			close=close,

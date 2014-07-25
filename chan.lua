@@ -1,6 +1,7 @@
 chans={}
 function sendchan(chan,txt,cl)
 	cl=type(cl)=="table" and cl.nick or cl
+	print(serialize({chan,txt,cl}))
 	if type(chan)~="table" then
 		chan={[chan]=true}
 	end
@@ -29,11 +30,12 @@ function chan_join(user,chan)
 			quiet={},
 			modes={},
 			users={},
+			name=v,
 		}
 		local nchan=chans[v]
 		nchan.users[user.nick]=true
 		user.chans[v]=true
-		sendchan(v,":"..cl.nick.." JOIN "..v)
+		sendchan(v,":"..user.id.." JOIN "..v)
 		local cchan={}
 		for k,v in pairs(chans[v].users) do
 			table.insert(cchan,k)
@@ -42,14 +44,14 @@ function chan_join(user,chan)
 			local o={}
 			for l2=l1,l1+49 do
 				if cchan[l2] then
-					table.insert(o,nchan.voice[cchan[l2]] and "+" or "")..(nchan.op[cchan[l2]] and "@" or "")..cchan[l2]
+					table.insert(o,(nchan.voice[cchan[l2]] and "+" or "")..(nchan.op[cchan[l2]] and "@" or "")..cchan[l2])
 				end
 			end
-			user:send(encode(cl,353,"=",v,":"..table.concat(o," ")))
+			user:send(encode(user,353,"=",v,":"..table.concat(o," ")))
 		end
-		user:send(encode(cl,366,v,"End of /NAMES list."))
+		user:send(encode(user,366,v,"End of /NAMES list."))
 		if #cchan==1 then
-			admin_op(v,cl)
+			setmode(v,"+o",user,"potato.lua")
 		end
 	end
 end
@@ -61,9 +63,9 @@ function chan_part(user,chan,txt)
 	end
 	for k,v in pairs(chan) do
 		if txt~=false then
-			sendchan(k,":"..user.nick.." PART "..k.." :"..(txt or "Leaving"))
+			sendchan(k,":"..user.id.." PART "..k.." :"..(txt or "Leaving"))
 		end
-		cl.chans[k]=nil
+		user.chans[k]=nil
 		chans[k].users[user.nick]=nil
 		if not next(chans[k].users) then
 			chans[k]=nil
@@ -83,26 +85,22 @@ hook.new("command_join",function(user,chans)
 			user:send(encode(user,403,chan,"No such channel"))
 		end
 	end
-		if chan:match("^#[%w%d]*$") then
-			if not cl.chans[chan] then
-				chan_join(cl,chan)
-			end
-		else
-			return 403,chan,"No such channel"
+	for k,v in pairs(cchans) do
+		if not user.chans[v] then
+			chan_join(user,v)
 		end
 	end
 end)
 
-hook.new("command_part",function(cl,chan,txt)
+hook.new("command_part",function(user,chan,txt)
 	if not chan then
 		return 461,"JOIN","Not enough parameters"
 	elseif not chans[chan] then
 		return 403,chan,"No such channel"
-	elseif not cl.chans[chan] then
+	elseif not user.chans[chan] then
 		return 442,chan,"You're not on that channel"
-	elseif chan~="#oc" then
-		chan_part(cl,chan,txt)
 	end
+	chan_part(user,chan,txt)
 end)
 
 hook.new("command_privmsg",function(user,chan,txt)
@@ -110,14 +108,14 @@ hook.new("command_privmsg",function(user,chan,txt)
 		return 461,"PRIVMSG","Not enough parameters"
 	end
 	if chans[chan] then
-		if cl.chans[chan] then
-			sendchan(chan,":"..user.nick.." PRIVMSG "..chan.." :"..txt,user)
+		if user.chans[chan] then
+			sendchan(chan,":"..user.id.." PRIVMSG "..chan.." :"..txt,user)
 			hook.queue("msg",user,chan,txt)
 		else
 			return 404,chan,"Cannot send to channel"
 		end
 	elseif nicks[chan] then
-		nicks[chan]:send(":"..user.nick.." PRIVMSG "..chan.." :"..txt)
+		nicks[chan]:send(":"..user.id.." PRIVMSG "..chan.." :"..txt)
 		hook.queue("msg",user,chan,txt)
 	else
 		return 401,chan,"No such nick/channel"
@@ -129,28 +127,24 @@ hook.new("command_notice",function(user,chan,txt)
 		return 461,"NOTICE","Not enough parameters"
 	end
 	if chans[chan] then
-		if cl.chans[chan] then
-			sendchan(chan,":"..user.nick.." NOTICE "..chan.." :"..txt,user)
+		if user.chans[chan] then
+			sendchan(chan,":"..user.id.." NOTICE "..chan.." :"..txt,user)
 			hook.queue("notice",user,chan,txt)
 		else
 			return 404,chan,"Cannot send to channel"
 		end
 	elseif nicks[chan] then
-		nicks[chan]:send(":"..user.nick.." NOTICE "..chan.." :"..txt)
+		nicks[chan]:send(":"..user.id.." NOTICE "..chan.." :"..txt)
 		hook.queue("notice",user,chan,txt)
 	else
 		return 401,chan,"No such nick/channel"
 	end
 end)
 
-hook.new("command_quit",function(user,reason)
-	for k,v in pairs(user,chans) do
-		chan_part(user,k,false)
-		sendchan()
-	end
+hook.new("command_quit",function(user,reason)	
 	if reason then
-		user.cl:close("Client quit ("..reason..")")
+		user:close("Client quit ("..reason..")")
 	else
-		user.cl:close("Client quit")
+		user:close("Client quit")
 	end
 end)

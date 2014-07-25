@@ -7,23 +7,33 @@ local smode={
 local cmode={
 	
 }
-function setmode(chan,mode,cl)
-	chan=chans[chan]
-	local cm=mode:sub(1,1)=="+"
-	mode=mode:sub(2)
+function setmode(chan,tmode,cl,ru)
+	chan=type(chan)=="string" and chans[chan] or chan
+	local cm=tmode:sub(1,1)=="+"
+	local mode=tmode:sub(2)
 	if cl then
-		chan[smode[mode]][cl]=cm or nil
+		cl=type(cl)=="string" and nicks[cl] or cl
+		if ru then
+			sendchan(chan.name,":"..ru.." MODE "..chan.name.." "..tmode.." "..cl.nick)
+		end
+		chan[smode[mode]][cl.nick]=cm or nil
 	else
 		chan.modes[mode]=cm or nil
 	end
 end
-hook.new("command_mode",function(cl,schan,modes,...)
+hook.new("command_mode",function(user,schan,modes,...)
 	local chan=chans[schan]
-	if not modes then
+	if not schan or schan=="" then
 		return 461,"MODE","Not enough parameters"
 	elseif not chan then
 		return 403,schan,"No such channel"
-	elseif not chan.op[cl.nick] then
+	elseif not modes or modes=="" then
+		local o="+"
+		for k,v in pairs(chan.modes) do
+			o=o..k
+		end
+		return 324,chan.name,o
+	elseif not chan.op[user.nick] then
 		return 482,schan,"You're not a channel operator"
 	end
 	local users={...}
@@ -31,8 +41,8 @@ hook.new("command_mode",function(cl,schan,modes,...)
 	local md={}
 	for l1=1,#modes do
 		local c=modes:sub(l1,l1)
-		if c=="+" or cm=="-" then
-			cm=cm=="+"
+		if c=="+" or c=="-" then
+			cm=c=="+"
 		else
 			md[#md+1]={c,cm}
 		end
@@ -52,13 +62,17 @@ hook.new("command_mode",function(cl,schan,modes,...)
 					return 401,u,"No such nick/channel"
 				end
 				om=om..v[1]
-				table.insert(ou,nicks[u])
+				table.insert(ou,u)
 				table.remove(users,1)
 				setmode(chan,(cm and "+" or "-")..v[1],u)
 			end
 		elseif cmode[v[1]] then
 			setmode(chan,(cm and "+" or "-")..v[1])
 		end
+	end
+	om=om:gsub("%+%-","-")
+	if #om>1 then
+		sendchan(chan.name,":"..user.id.." MODE "..chan.name.." "..om.." "..table.concat(ou," "))
 	end
 end)
 
@@ -74,7 +88,7 @@ end
 
 hook.new("msg",function(cl,chan,txt)
 	if cl.sk:getpeername()=="127.0.0.1" and txt:match("^@") then
-		txt=txt:match("^@(.+)")
+		txt=txt:match("^@(.*)")
 		local func,err=loadstring("return "..txt,"=lua")
 		if not func then
 			func,err=loadstring(txt,"=lua")
